@@ -1,0 +1,69 @@
+version: "3.8"
+
+services:
+  proxy:
+    image: "haproxy:lts-alpine"
+    restart: always
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg
+    depends_on:
+      - rabbit0
+      - rabbit1
+      - rabbit2
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      - "2020:2020"
+
+  rabbit0:
+    image: "rabbitmq:3.8.9-management-alpine"
+    hostname: rabbit0
+    environment:
+      - RABBITMQ_ERLANG_COOKIE=GWRZ6VPHRVUKUX4GNY4H
+    volumes:
+      - ./data/rabbit0-data:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./rabbitmq/cluster-entry.sh:/usr/local/bin/cluster-entry.sh
+    tty: true
+    restart: always
+    entrypoint: /usr/local/bin/cluster-entry.sh
+
+  rabbit1:
+    image: "rabbitmq:3.8.9-alpine"
+    hostname: rabbit1
+    environment:
+      - RABBITMQ_ERLANG_COOKIE=GWRZ6VPHRVUKUX4GNY4H
+      - CLUSTERED=true
+      - CLUSTER_WITH=rabbit0
+      - RAM_NODE=true
+    volumes:
+      - ./data/rabbit1-data:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./rabbitmq/cluster-entry.sh:/usr/local/bin/cluster-entry.sh
+    tty: true
+    depends_on:
+      - rabbit0
+    restart: always
+    entrypoint: /usr/local/bin/cluster-entry.sh
+
+  rabbit2:
+    image: "rabbitmq:3.8.9-alpine"
+    hostname: rabbit2
+    environment:
+      - RABBITMQ_ERLANG_COOKIE=GWRZ6VPHRVUKUX4GNY4H
+      - CLUSTERED=true
+      - CLUSTER_WITH=rabbit0
+    volumes:
+      - ./data/rabbit2-data:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./rabbitmq/cluster-entry.sh:/usr/local/bin/cluster-entry.sh
+    tty: true
+    depends_on:
+      - rabbit0
+    restart: always
+    entrypoint: /usr/local/bin/cluster-entry.sh
+
+  redis:
+    image: "redis:alpine3.12"
+    ports:
+      - "6379:6379"
